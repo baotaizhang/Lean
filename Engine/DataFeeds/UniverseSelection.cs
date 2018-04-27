@@ -115,6 +115,14 @@ namespace QuantConnect.Lean.Engine.DataFeeds
 
                     var coarseData = universeData.Data.OfType<CoarseFundamental>().ToLookup(d => d.Symbol);
                     universeData.Data = new List<BaseData>();
+
+                    var duplicates = coarseData.Where(c => c.Count() > 1).ToList();
+                    foreach (var dupe in duplicates)
+                    {
+                        var dates = string.Join(",", dupe.Select(c => c.EndTime.ToString("o")));
+                        Log.Trace($"UniverseSelection.ApplyUniverseSelection({dupe.Key}): COARSE:: {dupe.Count()}  DATES: {dates}");
+                    }
+
                     foreach (var fine in fineCollection.Data.OfType<FineFundamental>())
                     {
                         var fundamentals = new Fundamentals

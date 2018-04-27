@@ -113,7 +113,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                     // to the universeData dictionaries in SubscriptionSynchronizer and LiveTradingDataFeed and
                     // rely on reference semantics to work.
 
-                    var coarseData = universeData.Data.OfType<CoarseFundamental>().ToDictionary(d => d.Symbol);
+                    var coarseData = universeData.Data.OfType<CoarseFundamental>().ToLookup(d => d.Symbol);
                     universeData.Data = new List<BaseData>();
                     foreach (var fine in fineCollection.Data.OfType<FineFundamental>())
                     {
@@ -132,8 +132,15 @@ namespace QuantConnect.Lean.Engine.DataFeeds
                             ValuationRatios = fine.ValuationRatios
                         };
 
-                        CoarseFundamental coarse;
-                        if (coarseData.TryGetValue(fine.Symbol, out coarse))
+                        var coarseForSymbol = coarseData[fine.Symbol].OrderByDescending(c => c.EndTime).ToList();
+                        if (coarseForSymbol.Count > 1)
+                        {
+                            var dates = string.Join(",", coarseForSymbol.Select(c => c.EndTime.ToString("o")));
+                            Log.Trace($"UniverseSelection.ApplyUniverseSelection(): COARSE:: {coarseForSymbol.Count}  DATES: {dates}");
+                        }
+
+                        var coarse = coarseForSymbol.FirstOrDefault();
+                        if (coarse != null)
                         {
                             // the only time the coarse data won't exist is if the selection function
                             // doesn't use the data provided, and instead returns a constant list of
